@@ -1,0 +1,41 @@
+Package: frameR
+Type: Package
+Title: Measuring Emphasis Frames in Political Text Using Sentence Embeddings
+Version: 0.1.0
+Authors@R: 
+    person(
+      given   = "Spencer",
+      family  = "Corp",
+      email   = "spenccorp2@gmail.com",
+      role    = c("aut", "cre")
+    )
+Description: Provides tools for measuring emphasis frames in political text
+    using transformer-based sentence embeddings and cosine similarity.
+    Frames are operationalized as semantic associations between issue-relevant
+    discourse and theoretically specified frame category keywords, following
+    Druckman (2011). The package implements a four-step pipeline: embedding
+    a corpus, identifying issue-relevant sentences, specifying and embedding
+    frame categories, and measuring frame strength with bootstrap uncertainty
+    quantification and permutation-based significance testing. Designed for
+    cross-national and cross-lingual comparative research, the package
+    accepts any sentence embedding model and includes utilities for
+    domain adaptation. Accompanies the methods paper introducing the
+    approach.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    reticulate,
+    rstudioapi,
+    ggplot2,
+    dplyr,
+    rlang
+Suggests:
+    patchwork,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+URL: https://github.com/spenccorp/frameR
+BugReports: https://github.com/spenccorp/frameR/issues
