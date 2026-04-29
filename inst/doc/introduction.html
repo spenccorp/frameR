@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+
+<title>Introduction to frameR</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Introduction to frameR</h1>
+
+
+
+<div id="overview" class="section level2">
+<h2>Overview</h2>
+<p><code>frameR</code> measures emphasis frames in political text using
+transformer-based sentence embeddings and cosine similarity. Rather than
+classifying sentences into frame categories — which measures how often a
+frame appears — <code>frameR</code> measures the semantic association
+between issue-relevant discourse and theoretically specified evaluative
+dimensions. This operationalizes emphasis frames as they are
+conceptualized in the political communication literature: as semantic
+links between a core issue and peripheral considerations that shape how
+that issue is perceived and evaluated (Druckman 2011).</p>
+<p>The package is designed for researchers who want to:</p>
+<ul>
+<li>Track how a party’s framing of an issue evolves across time</li>
+<li>Compare framing strategies across parties on a shared issue</li>
+<li>Conduct cross-national comparisons of framing patterns across
+languages and party families</li>
+</ul>
+<p>All examples in this vignette use <code>eval = FALSE</code> because
+the pipeline requires a Python environment that is set up separately.
+See the Installation section for setup instructions.</p>
+</div>
+<div id="installation" class="section level2">
+<h2>Installation</h2>
+<p>Install <code>frameR</code> from GitHub:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;spenccorp/frameR&quot;</span>)</span></code></pre></div>
+<p>After installing, set up the Python environment once and restart
+R:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(frameR)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">install_frameR</span>()</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="co"># Restart R when prompted, then load the package again</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="fu">library</span>(frameR)</span></code></pre></div>
+<p>Check the environment is ready:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">frameR_status</span>()</span></code></pre></div>
+</div>
+<div id="a-complete-example-immigration-framing-in-french-party-manifestos" class="section level2">
+<h2>A Complete Example: Immigration Framing in French Party
+Manifestos</h2>
+<p>This example walks through the full <code>frameR</code> pipeline
+using a simplified version of the analysis presented in the accompanying
+methods paper. We examine whether the French National Rally shifted its
+immigration framing between an early period (1997-2011) and a later
+period (2012-2022).</p>
+<div id="step-1-load-a-model" class="section level3">
+<h3>Step 1: Load a Model</h3>
+<p>Load the base sentence embedding model. For political manifesto text
+we recommend the MARPOR-adapted model when available — see
+<code>?load_model</code> for details.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">library</span>(frameR)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">load_model</span>(<span class="st">&quot;base&quot;</span>)</span></code></pre></div>
+</div>
+<div id="step-2-prepare-your-corpus" class="section level3">
+<h3>Step 2: Prepare Your Corpus</h3>
+<p><code>frameR</code> expects a character vector of sentences and a
+corresponding numeric vector of years. Your corpus should be
+pre-processed into individual sentences before passing to the
+package.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># In practice, load your corpus from a CSV or data frame:</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># corpus &lt;- read.csv(&quot;my_manifesto_corpus.csv&quot;)</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># sentences &lt;- corpus$text</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># years     &lt;- corpus$year</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># For illustration we use a small example corpus</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>sentences <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="st">&quot;L&#39;immigration coûte cher à l&#39;État providence.&quot;</span>,</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="st">&quot;Les immigrés prennent les emplois des travailleurs français.&quot;</span>,</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="st">&quot;Notre culture et nos valeurs sont menacées.&quot;</span>,</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  <span class="st">&quot;Nous devons protéger l&#39;identité nationale.&quot;</span>,</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  <span class="st">&quot;La sécurité aux frontières est essentielle.&quot;</span>,</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="st">&quot;La criminalité augmente avec l&#39;immigration illégale.&quot;</span>,</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="st">&quot;L&#39;économie souffre d&#39;une migration incontrôlée.&quot;</span>,</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="st">&quot;La France ne peut plus se permettre l&#39;immigration.&quot;</span>,</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  <span class="st">&quot;L&#39;immigration massive remet en cause nos valeurs républicaines.&quot;</span>,</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  <span class="st">&quot;Il faut protéger les femmes contre les cultures incompatibles.&quot;</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>)</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>  <span class="dv">1997</span>, <span class="dv">1997</span>, <span class="dv">2002</span>, <span class="dv">2002</span>,</span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>  <span class="dv">2012</span>, <span class="dv">2012</span>, <span class="dv">2017</span>, <span class="dv">2017</span>,</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>  <span class="dv">2022</span>, <span class="dv">2022</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="step-3-embed-the-corpus" class="section level3">
+<h3>Step 3: Embed the Corpus</h3>
+<p>Embed all sentences using the loaded model. Embeddings are computed
+once and reused across all downstream steps — do not re-embed between
+steps.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>embeddings <span class="ot">&lt;-</span> <span class="fu">embed_corpus</span>(sentences, model)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co"># embeddings is a matrix: one row per sentence, 768 columns</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">dim</span>(embeddings)</span></code></pre></div>
+</div>
+<div id="step-4-identify-issue-relevant-sentences" class="section level3">
+<h3>Step 4: Identify Issue-Relevant Sentences</h3>
+<p>Identify which sentences discuss immigration using the recommended
+dual-criteria approach: keyword matching combined with semantic
+similarity thresholding.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>topic_mask <span class="ot">&lt;-</span> <span class="fu">identify_topic_sentences</span>(</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="at">sentences    =</span> sentences,</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">embeddings   =</span> embeddings,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">anchor_words =</span> <span class="fu">c</span>(<span class="st">&quot;immigration&quot;</span>, <span class="st">&quot;immigrés&quot;</span>, </span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                   <span class="st">&quot;migration&quot;</span>, <span class="st">&quot;immigré&quot;</span>),</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="at">model        =</span> model,</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">threshold    =</span> <span class="fl">0.5</span>,</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">method       =</span> <span class="st">&quot;both&quot;</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>)</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># Check how many sentences were identified</span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="fu">sum</span>(topic_mask)</span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co"># Inspect identified sentences</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>sentences[topic_mask]</span></code></pre></div>
+<p>We recommend checking robustness to the threshold value by running
+the identification step under alternative thresholds (0.3, 0.5, 0.7) and
+confirming that substantive findings are stable.</p>
+</div>
+<div id="step-5-specify-and-embed-frame-categories" class="section level3">
+<h3>Step 5: Specify and Embed Frame Categories</h3>
+<p>Specify frame categories as named lists of keywords, derived from the
+theoretical and empirical literature on your issue and context. Keywords
+should be in the language of your target corpus.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>frame_categories <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emplois&quot;</span>, <span class="st">&quot;emploi&quot;</span>, </span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="st">&quot;welfare&quot;</span>, <span class="st">&quot;État providence&quot;</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  ),</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="st">&quot;culture&quot;</span>, <span class="st">&quot;valeurs&quot;</span>, <span class="st">&quot;tradition&quot;</span>, </span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>    <span class="st">&quot;égalité&quot;</span>, <span class="st">&quot;islam&quot;</span>, <span class="st">&quot;laïcité&quot;</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  ),</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>    <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;frontière&quot;</span>, <span class="st">&quot;terrorisme&quot;</span>, </span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>    <span class="st">&quot;sécurité&quot;</span>, <span class="st">&quot;illégal&quot;</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>  )</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>)</span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a></span>
+<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>keyword_embeddings <span class="ot">&lt;-</span> <span class="fu">embed_keywords</span>(frame_categories, model)</span></code></pre></div>
+<div id="robustness-to-keyword-specification" class="section level4">
+<h4>Robustness to Keyword Specification</h4>
+<p>Because frame categories are researcher-specified, we recommend
+checking robustness under broader and stricter keyword sets. Here is an
+example for the Economic frame:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Broader Economic specification</span></span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>frames_broader <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emplois&quot;</span>, <span class="st">&quot;emploi&quot;</span>, <span class="st">&quot;welfare&quot;</span>,</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    <span class="st">&quot;État providence&quot;</span>, <span class="st">&quot;travail&quot;</span>, <span class="st">&quot;salaire&quot;</span>, </span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    <span class="st">&quot;chômage&quot;</span>, <span class="st">&quot;coût&quot;</span>, <span class="st">&quot;charges&quot;</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  ),</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(</span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>    <span class="st">&quot;culture&quot;</span>, <span class="st">&quot;valeurs&quot;</span>, <span class="st">&quot;tradition&quot;</span>, <span class="st">&quot;égalité&quot;</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>    <span class="st">&quot;islam&quot;</span>, <span class="st">&quot;laïcité&quot;</span>, <span class="st">&quot;identité&quot;</span>, <span class="st">&quot;nation&quot;</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>    <span class="st">&quot;patrimoine&quot;</span>, <span class="st">&quot;intégration&quot;</span></span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>  ),</span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>    <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;frontière&quot;</span>, <span class="st">&quot;terrorisme&quot;</span>, <span class="st">&quot;sécurité&quot;</span>,</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>    <span class="st">&quot;illégal&quot;</span>, <span class="st">&quot;police&quot;</span>, <span class="st">&quot;délinquance&quot;</span>, <span class="st">&quot;violence&quot;</span>,</span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>    <span class="st">&quot;ordre&quot;</span>, <span class="st">&quot;contrôle&quot;</span></span>
+<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  )</span>
+<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>)</span>
+<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a></span>
+<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co"># Stricter Economic specification  </span></span>
+<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>frames_stricter <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(<span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emploi&quot;</span>, <span class="st">&quot;chômage&quot;</span>),</span>
+<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(<span class="st">&quot;culture&quot;</span>, <span class="st">&quot;tradition&quot;</span>, <span class="st">&quot;laïcité&quot;</span>),</span>
+<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(<span class="st">&quot;terrorisme&quot;</span>, <span class="st">&quot;sécurité&quot;</span>, <span class="st">&quot;frontière&quot;</span>)</span>
+<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>)</span></code></pre></div>
+<p>Run the full analysis under each specification and confirm that
+directional findings are consistent.</p>
+</div>
+</div>
+<div id="step-6-measure-frame-strength" class="section level3">
+<h3>Step 6: Measure Frame Strength</h3>
+<p>Measure frame strength across time periods using bootstrap inference
+and permutation tests.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">measure_frames</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  <span class="at">embeddings         =</span> embeddings,</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="at">topic_mask         =</span> topic_mask,</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="at">keyword_embeddings =</span> keyword_embeddings,</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  <span class="at">periods            =</span> <span class="fu">list</span>(</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>    <span class="at">Latency    =</span> <span class="fu">c</span>(<span class="dv">1997</span>, <span class="dv">2002</span>),</span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>    <span class="at">Activation =</span> <span class="fu">c</span>(<span class="dv">2012</span>, <span class="dv">2022</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  ),</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="at">years              =</span> years,</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>  <span class="at">n_bootstrap        =</span> <span class="dv">10000</span><span class="dt">L</span>,</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>  <span class="at">n_permutations     =</span> <span class="dv">10000</span><span class="dt">L</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>  <span class="at">seed               =</span> <span class="dv">42</span><span class="dt">L</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>)</span></code></pre></div>
+</div>
+<div id="step-7-inspect-and-plot-results" class="section level3">
+<h3>Step 7: Inspect and Plot Results</h3>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
+<p>The print output shows:</p>
+<ul>
+<li><strong>Frame Similarity</strong>: Bootstrap mean and 95% confidence
+interval for each frame category and period. Higher values indicate
+stronger semantic association between issue discourse and that frame
+category.</li>
+<li><strong>Between-Period Differences</strong>: The change in mean
+frame similarity from the first to the second period, with permutation
+test p-values. Positive values indicate increased framing in the second
+period.</li>
+<li><strong>Relative Frame Emphasis</strong>: Frame similarities
+normalized within each period so they sum to 1. Use these to assess
+which frame is dominant within a period, not to compare absolute levels
+across frame categories.</li>
+</ul>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Full three-panel plot</span></span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">plot</span>(results)</span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># Individual panels</span></span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="fu">plot</span>(results, <span class="at">type =</span> <span class="st">&quot;similarity&quot;</span>)</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="fu">plot</span>(results, <span class="at">type =</span> <span class="st">&quot;ratios&quot;</span>)</span>
+<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="fu">plot</span>(results, <span class="at">type =</span> <span class="st">&quot;differences&quot;</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="interpreting-results" class="section level2">
+<h2>Interpreting Results</h2>
+<div id="what-cosine-similarity-values-mean" class="section level3">
+<h3>What cosine similarity values mean</h3>
+<p>Cosine similarity scores are not interpretable in absolute terms. A
+similarity of 0.4 to the Economic frame keywords does not mean the party
+uses economic frames 40% of the time. What is meaningful is comparison:
+an increase from 0.3 to 0.4 across periods indicates that the discourse
+has become more semantically proximate to economic considerations.</p>
+</div>
+<div id="comparing-across-frame-categories" class="section level3">
+<h3>Comparing across frame categories</h3>
+<p>Do not compare absolute similarity scores across frame categories
+within a single period. Some concepts are inherently closer together in
+embedding space than others for reasons that reflect general language
+patterns rather than party strategy. Use the relative emphasis (ratio)
+scores for within-period cross-frame comparison.</p>
+</div>
+<div id="statistical-significance" class="section level3">
+<h3>Statistical significance</h3>
+<p>P-values from the permutation test indicate whether between-period
+differences are distinguishable from chance. Report both the magnitude
+of the difference and the p-value — statistical significance alone
+carries limited meaning when corpora are very large or effect sizes are
+very small.</p>
+</div>
+</div>
+<div id="cross-lingual-applications" class="section level2">
+<h2>Cross-Lingual Applications</h2>
+<p><code>frameR</code> supports cross-lingual analysis through
+multilingual embedding models. For cross-national comparisons spanning
+multiple languages, use a multilingual model:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Load a multilingual model</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>model_multi <span class="ot">&lt;-</span> <span class="fu">load_model</span>(</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="st">&quot;sentence-transformers/paraphrase-multilingual-mpnet-base-v2&quot;</span></span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>)</span></code></pre></div>
+<p>When applying the method across languages, translate and validate
+frame category keywords independently for each language rather than
+translating mechanically. Frame-associated vocabulary does not always
+translate directly across political and cultural contexts.</p>
+</div>
+<div id="domain-adaptation" class="section level2">
+<h2>Domain Adaptation</h2>
+<p>For best results with political manifesto text, fine-tune the
+embedding model on a domain-relevant corpus before analysis. Fine-tuning
+makes the embedding space more sensitive to the semantic register of
+political text, producing more precise frame measures.</p>
+<p>The fine-tuning corpus should be:</p>
+<ul>
+<li>From the same genre as your target corpus (e.g. party
+manifestos)</li>
+<li>Distinct from your target corpus to avoid circularity</li>
+<li>Reasonably large (several hundred documents minimum)</li>
+</ul>
+<p>A model pre-trained on the full Comparative Manifesto Project corpus
+will be made available on Hugging Face upon publication of the
+accompanying methods paper. Once available it can be loaded as the
+default:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Coming soon - MARPOR-adapted model</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">load_model</span>(<span class="st">&quot;spenccorp/frameR-marpor&quot;</span>)</span></code></pre></div>
+</div>
+<div id="references" class="section level2">
+<h2>References</h2>
+<p>Druckman, James N. (2011). “What’s it all about? Framing in political
+science.” In <em>Perspectives on framing</em>, pp. 282-296. Psychology
+Press.</p>
+<p>Reimers, Nils and Iryna Gurevych (2019). “Sentence-BERT: Sentence
+embeddings using Siamese BERT-networks.” In <em>Proceedings of
+EMNLP</em>.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
