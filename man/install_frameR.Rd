@@ -4,12 +4,17 @@
 \alias{install_frameR}
 \title{Install Python dependencies for frameR}
 \usage{
-install_frameR(envname = "frameR", restart = TRUE)
+install_frameR(envname = "frameR", envpath = NULL, restart = TRUE)
 }
 \arguments{
 \item{envname}{Character. Name of the virtual environment to
 create. Defaults to "frameR". Only change this if you have
 a specific reason to use a different name.}
+
+\item{envpath}{Character. Path where the virtual environment
+will be created. Defaults to a platform-appropriate location
+outside of cloud-synced folders. Change this if you want
+the environment in a specific location.}
 
 \item{restart}{Logical. Whether to prompt a restart of R after
 installation. Defaults to TRUE.}

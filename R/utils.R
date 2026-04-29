@@ -17,12 +17,15 @@ pkg_env <- new.env(parent = emptyenv())
 
 .onLoad <- function(libname, pkgname) {
 
-  # Activate the frameR virtual environment if it exists
-  if (reticulate::virtualenv_exists("frameR")) {
-    reticulate::use_virtualenv("frameR", required = FALSE)
+  # Get stored environment path
+  envpath <- get_stored_venv_path()
+
+  # Activate environment if it exists
+  if (!is.null(envpath) && reticulate::virtualenv_exists(envpath)) {
+    reticulate::use_virtualenv(envpath, required = FALSE)
   }
 
-  # Source the Python module and store in package environment
+  # Source the Python module
   python_file <- system.file(
     "python", "frameR.py",
     package = pkgname
@@ -34,14 +37,11 @@ pkg_env <- new.env(parent = emptyenv())
 }
 
 
-# ============================================================
-# ON ATTACH
-# Runs when package attaches - used for user-facing messages
-# ============================================================
-
 .onAttach <- function(libname, pkgname) {
 
-  if (!reticulate::virtualenv_exists("frameR")) {
+  envpath <- get_stored_venv_path()
+
+  if (is.null(envpath) || !reticulate::virtualenv_exists(envpath)) {
     packageStartupMessage(
       "frameR: Python environment not found.\n",
       "Run install_frameR() to set up the required dependencies.\n",
@@ -49,8 +49,6 @@ pkg_env <- new.env(parent = emptyenv())
     )
   }
 }
-
-
 # ============================================================
 # INTERNAL HELPERS
 # ============================================================
