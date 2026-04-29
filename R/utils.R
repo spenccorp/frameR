@@ -17,25 +17,33 @@ pkg_env <- new.env(parent = emptyenv())
 
 .onLoad <- function(libname, pkgname) {
 
-  # Get stored environment path
-  envpath <- get_stored_venv_path()
+  # Attempt to get stored environment path
+  envpath <- tryCatch(
+    get_stored_venv_path(),
+    error = function(e) NULL
+  )
 
-  # Activate environment if it exists
-  if (!is.null(envpath) && reticulate::virtualenv_exists(envpath)) {
-    reticulate::use_virtualenv(envpath, required = FALSE)
+  # Activate environment if it exists - fail silently if not
+  if (!is.null(envpath)) {
+    tryCatch(
+      reticulate::use_virtualenv(envpath, required = FALSE),
+      error = function(e) NULL
+    )
   }
 
-  # Source the Python module
+  # Source Python module - fail silently if Python not available
   python_file <- system.file(
     "python", "frameR.py",
     package = pkgname
   )
 
   if (file.exists(python_file)) {
-    reticulate::source_python(python_file, envir = pkg_env)
+    tryCatch(
+      reticulate::source_python(python_file, envir = pkg_env),
+      error = function(e) NULL
+    )
   }
 }
-
 
 .onAttach <- function(libname, pkgname) {
 
