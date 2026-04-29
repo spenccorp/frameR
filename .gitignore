@@ -7,3 +7,5 @@
 inst/doc
 inst/python/__pycache__
 NAMESPACE-Desktop
+/doc/
+/Meta/

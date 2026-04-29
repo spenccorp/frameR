@@ -1,19 +1,345 @@
 ---
-title: "introduction"
+title: "Introduction to frameR"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{introduction}
+  %\VignetteIndexEntry{Introduction to frameR}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>"
+  collapse  = TRUE,
+  comment   = "#>",
+  eval      = FALSE
 )
 ```
 
-```{r setup}
+## Overview
+
+`frameR` measures emphasis frames in political text using 
+transformer-based sentence embeddings and cosine similarity. 
+Rather than classifying sentences into frame categories — which 
+measures how often a frame appears — `frameR` measures the semantic 
+association between issue-relevant discourse and theoretically 
+specified evaluative dimensions. This operationalizes emphasis frames 
+as they are conceptualized in the political communication literature: 
+as semantic links between a core issue and peripheral considerations 
+that shape how that issue is perceived and evaluated (Druckman 2011).
+
+The package is designed for researchers who want to:
+
+- Track how a party's framing of an issue evolves across time
+- Compare framing strategies across parties on a shared issue
+- Conduct cross-national comparisons of framing patterns across 
+  languages and party families
+
+All examples in this vignette use `eval = FALSE` because the pipeline
+requires a Python environment that is set up separately. See the 
+Installation section for setup instructions.
+
+## Installation
+
+Install `frameR` from GitHub:
+
+```{r install, eval = FALSE}
+devtools::install_github("spenccorp/frameR")
+```
+
+After installing, set up the Python environment once and restart R:
+
+```{r setup_python, eval = FALSE}
+library(frameR)
+install_frameR()
+# Restart R when prompted, then load the package again
 library(frameR)
 ```
+
+Check the environment is ready:
+
+```{r status, eval = FALSE}
+frameR_status()
+```
+
+## A Complete Example: Immigration Framing in French Party Manifestos
+
+This example walks through the full `frameR` pipeline using a 
+simplified version of the analysis presented in the accompanying 
+methods paper. We examine whether the French National Rally shifted 
+its immigration framing between an early period (1997-2011) and a 
+later period (2012-2022).
+
+### Step 1: Load a Model
+
+Load the base sentence embedding model. For political manifesto 
+text we recommend the MARPOR-adapted model when available — see
+`?load_model` for details.
+
+```{r load_model}
+library(frameR)
+
+model <- load_model("base")
+```
+
+### Step 2: Prepare Your Corpus
+
+`frameR` expects a character vector of sentences and a corresponding 
+numeric vector of years. Your corpus should be pre-processed into 
+individual sentences before passing to the package.
+
+```{r prepare_corpus}
+# In practice, load your corpus from a CSV or data frame:
+# corpus <- read.csv("my_manifesto_corpus.csv")
+# sentences <- corpus$text
+# years     <- corpus$year
+
+# For illustration we use a small example corpus
+sentences <- c(
+  "L'immigration coûte cher à l'État providence.",
+  "Les immigrés prennent les emplois des travailleurs français.",
+  "Notre culture et nos valeurs sont menacées.",
+  "Nous devons protéger l'identité nationale.",
+  "La sécurité aux frontières est essentielle.",
+  "La criminalité augmente avec l'immigration illégale.",
+  "L'économie souffre d'une migration incontrôlée.",
+  "La France ne peut plus se permettre l'immigration.",
+  "L'immigration massive remet en cause nos valeurs républicaines.",
+  "Il faut protéger les femmes contre les cultures incompatibles."
+)
+
+years <- c(
+  1997, 1997, 2002, 2002,
+  2012, 2012, 2017, 2017,
+  2022, 2022
+)
+```
+
+### Step 3: Embed the Corpus
+
+Embed all sentences using the loaded model. Embeddings are computed
+once and reused across all downstream steps — do not re-embed between
+steps.
+
+```{r embed}
+embeddings <- embed_corpus(sentences, model)
+
+# embeddings is a matrix: one row per sentence, 768 columns
+dim(embeddings)
+```
+
+### Step 4: Identify Issue-Relevant Sentences
+
+Identify which sentences discuss immigration using the recommended
+dual-criteria approach: keyword matching combined with semantic
+similarity thresholding.
+
+```{r identify}
+topic_mask <- identify_topic_sentences(
+  sentences    = sentences,
+  embeddings   = embeddings,
+  anchor_words = c("immigration", "immigrés", 
+                   "migration", "immigré"),
+  model        = model,
+  threshold    = 0.5,
+  method       = "both"
+)
+
+# Check how many sentences were identified
+sum(topic_mask)
+
+# Inspect identified sentences
+sentences[topic_mask]
+```
+
+We recommend checking robustness to the threshold value by running
+the identification step under alternative thresholds (0.3, 0.5, 0.7)
+and confirming that substantive findings are stable.
+
+### Step 5: Specify and Embed Frame Categories
+
+Specify frame categories as named lists of keywords, derived from
+the theoretical and empirical literature on your issue and context.
+Keywords should be in the language of your target corpus.
+
+```{r frames}
+frame_categories <- list(
+  Economic = c(
+    "économie", "emplois", "emploi", 
+    "welfare", "État providence"
+  ),
+  Cultural = c(
+    "culture", "valeurs", "tradition", 
+    "égalité", "islam", "laïcité"
+  ),
+  Security = c(
+    "crime", "frontière", "terrorisme", 
+    "sécurité", "illégal"
+  )
+)
+
+keyword_embeddings <- embed_keywords(frame_categories, model)
+```
+
+#### Robustness to Keyword Specification
+
+Because frame categories are researcher-specified, we recommend
+checking robustness under broader and stricter keyword sets. Here
+is an example for the Economic frame:
+
+```{r robustness}
+# Broader Economic specification
+frames_broader <- list(
+  Economic = c(
+    "économie", "emplois", "emploi", "welfare",
+    "État providence", "travail", "salaire", 
+    "chômage", "coût", "charges"
+  ),
+  Cultural = c(
+    "culture", "valeurs", "tradition", "égalité",
+    "islam", "laïcité", "identité", "nation",
+    "patrimoine", "intégration"
+  ),
+  Security = c(
+    "crime", "frontière", "terrorisme", "sécurité",
+    "illégal", "police", "délinquance", "violence",
+    "ordre", "contrôle"
+  )
+)
+
+# Stricter Economic specification  
+frames_stricter <- list(
+  Economic = c("économie", "emploi", "chômage"),
+  Cultural = c("culture", "tradition", "laïcité"),
+  Security = c("terrorisme", "sécurité", "frontière")
+)
+```
+
+Run the full analysis under each specification and confirm that
+directional findings are consistent.
+
+### Step 6: Measure Frame Strength
+
+Measure frame strength across time periods using bootstrap inference
+and permutation tests.
+
+```{r measure}
+results <- measure_frames(
+  embeddings         = embeddings,
+  topic_mask         = topic_mask,
+  keyword_embeddings = keyword_embeddings,
+  periods            = list(
+    Latency    = c(1997, 2002),
+    Activation = c(2012, 2022)
+  ),
+  years              = years,
+  n_bootstrap        = 10000L,
+  n_permutations     = 10000L,
+  seed               = 42L
+)
+```
+
+### Step 7: Inspect and Plot Results
+
+```{r print}
+print(results)
+```
+
+The print output shows:
+
+- **Frame Similarity**: Bootstrap mean and 95% confidence interval 
+  for each frame category and period. Higher values indicate stronger
+  semantic association between issue discourse and that frame category.
+- **Between-Period Differences**: The change in mean frame similarity
+  from the first to the second period, with permutation test p-values.
+  Positive values indicate increased framing in the second period.
+- **Relative Frame Emphasis**: Frame similarities normalized within
+  each period so they sum to 1. Use these to assess which frame
+  is dominant within a period, not to compare absolute levels across
+  frame categories.
+
+```{r plot}
+# Full three-panel plot
+plot(results)
+
+# Individual panels
+plot(results, type = "similarity")
+plot(results, type = "ratios")
+plot(results, type = "differences")
+```
+
+## Interpreting Results
+
+### What cosine similarity values mean
+
+Cosine similarity scores are not interpretable in absolute terms.
+A similarity of 0.4 to the Economic frame keywords does not mean 
+the party uses economic frames 40% of the time. What is meaningful
+is comparison: an increase from 0.3 to 0.4 across periods indicates
+that the discourse has become more semantically proximate to economic
+considerations.
+
+### Comparing across frame categories
+
+Do not compare absolute similarity scores across frame categories
+within a single period. Some concepts are inherently closer together
+in embedding space than others for reasons that reflect general 
+language patterns rather than party strategy. Use the relative
+emphasis (ratio) scores for within-period cross-frame comparison.
+
+### Statistical significance
+
+P-values from the permutation test indicate whether between-period
+differences are distinguishable from chance. Report both the magnitude
+of the difference and the p-value — statistical significance alone
+carries limited meaning when corpora are very large or effect sizes
+are very small.
+
+## Cross-Lingual Applications
+
+`frameR` supports cross-lingual analysis through multilingual
+embedding models. For cross-national comparisons spanning multiple
+languages, use a multilingual model:
+
+```{r multilingual}
+# Load a multilingual model
+model_multi <- load_model(
+  "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+)
+```
+
+When applying the method across languages, translate and validate
+frame category keywords independently for each language rather than
+translating mechanically. Frame-associated vocabulary does not always
+translate directly across political and cultural contexts.
+
+## Domain Adaptation
+
+For best results with political manifesto text, fine-tune the 
+embedding model on a domain-relevant corpus before analysis.
+Fine-tuning makes the embedding space more sensitive to the semantic
+register of political text, producing more precise frame measures.
+
+The fine-tuning corpus should be:
+
+- From the same genre as your target corpus (e.g. party manifestos)
+- Distinct from your target corpus to avoid circularity
+- Reasonably large (several hundred documents minimum)
+
+A model pre-trained on the full Comparative Manifesto Project corpus
+will be made available on Hugging Face upon publication of the
+accompanying methods paper. Once available it can be loaded as the
+default:
+
+```{r marpor_model}
+# Coming soon - MARPOR-adapted model
+model <- load_model("spenccorp/frameR-marpor")
+```
+
+## References
+
+Druckman, James N. (2011). "What's it all about? Framing in 
+political science." In *Perspectives on framing*, pp. 282-296.
+Psychology Press.
+
+Reimers, Nils and Iryna Gurevych (2019). "Sentence-BERT: Sentence 
+embeddings using Siamese BERT-networks." In *Proceedings of EMNLP*.
