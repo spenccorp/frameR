@@ -5,13 +5,15 @@
 \alias{vignette_data}
 \title{French Party Manifesto Data for Vignette}
 \format{
-A data frame with 4240 rows and 4 variables:
+A data frame with 4240 rows and 5 variables:
 \describe{
 \item{text}{Character. The quasi-sentence text in French.}
 \item{party}{Numeric. MARPOR party code. 31720 = National
 Rally, 31320 = Socialist Party.}
 \item{date}{Numeric. Election date in YYYYMM format. 202206
 corresponds to the June 2022 French legislative elections.}
+\item{language}{Character. Language of the document.
+All entries are "french".}
 \item{party_name}{Character. Human-readable party name.}
 }
 }

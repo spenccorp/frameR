@@ -5,13 +5,15 @@
 #' as collected by the Comparative Manifesto Project. Used to
 #' demonstrate the frameR pipeline in the package vignette.
 #'
-#' @format A data frame with 4240 rows and 4 variables:
+#' @format A data frame with 4240 rows and 5 variables:
 #' \describe{
 #'   \item{text}{Character. The quasi-sentence text in French.}
 #'   \item{party}{Numeric. MARPOR party code. 31720 = National
 #'     Rally, 31320 = Socialist Party.}
 #'   \item{date}{Numeric. Election date in YYYYMM format. 202206
 #'     corresponds to the June 2022 French legislative elections.}
+#'   \item{language}{Character. Language of the document.
+#'     All entries are "french".}
 #'   \item{party_name}{Character. Human-readable party name.}
 #' }
 #'
