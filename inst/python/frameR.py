@@ -10,26 +10,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 # MODEL LOADING
 # ============================================================
 
-def load_model(model_name="base"):
-    """
-    Load a sentence embedding model.
-
-    Parameters
-    ----------
-    model_name : str
-        Either "base" for the default all-mpnet-base-v2 model,
-        a Hugging Face model string, or a local path to a
-        fine-tuned model.
-
-    Returns
-    -------
-    SentenceTransformer model object
-    """
+def load_model(model_name="spenccorp/frameR-marpor"):
     from sentence_transformers import SentenceTransformer
-
+    
     if model_name == "base":
-        model_name = "sentence-transformers/all-mpnet-base-v2"
-
+        model_name = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    
     model = SentenceTransformer(model_name)
     return model
 

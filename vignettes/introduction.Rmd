@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 )
 ```
 
+
 ## Overview
 
 `frameR` measures emphasis frames in political text using 
@@ -330,7 +331,7 @@ will be made available on Hugging Face upon publication of the
 accompanying methods paper. Once available it can be loaded as the
 default:
 
-```{r marpor_model}
+```{r marpor_model, eval = FALSE}
 # Coming soon - MARPOR-adapted model
 model <- load_model("spenccorp/frameR-marpor")
 ```

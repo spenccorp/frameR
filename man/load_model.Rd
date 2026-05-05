@@ -4,7 +4,7 @@
 \alias{load_model}
 \title{Load a sentence embedding model}
 \usage{
-load_model(model_name = "base")
+load_model(model_name = "spenccorp/frameR-marpor")
 }
 \arguments{
 \item{model_name}{Character. One of:

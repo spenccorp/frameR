@@ -34,11 +34,17 @@
 #' }
 #'
 #' @export
-load_model <- function(model_name = "base") {
+load_model <- function(model_name = "spenccorp/frameR-marpor") {
 
   check_python_env()
 
-  message("Loading model: ", model_name)
+  if (model_name == "base") {
+    model_name <- "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    message("Loading base model (no domain adaptation)...")
+  } else {
+    message("Loading model: ", model_name)
+  }
+
   message("This may take a moment on first use while the model downloads...")
 
   model <- pkg_env$load_model(model_name = model_name)
