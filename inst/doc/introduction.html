@@ -359,9 +359,9 @@ that issue is perceived and evaluated (Druckman 2011).</p>
 <li>Conduct cross-national comparisons of framing patterns across
 languages and party families</li>
 </ul>
-<p>All examples in this vignette use <code>eval = FALSE</code> because
-the pipeline requires a Python environment that is set up separately.
-See the Installation section for setup instructions.</p>
+<p>All code chunks in this vignette use <code>eval = FALSE</code>
+because the pipeline requires a Python environment set up separately via
+<code>install_frameR()</code>. See the Installation section below.</p>
 </div>
 <div id="installation" class="section level2">
 <h2>Installation</h2>
@@ -376,257 +376,201 @@ R:</p>
 <p>Check the environment is ready:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">frameR_status</span>()</span></code></pre></div>
 </div>
-<div id="a-complete-example-immigration-framing-in-french-party-manifestos" class="section level2">
-<h2>A Complete Example: Immigration Framing in French Party
-Manifestos</h2>
-<p>This example walks through the full <code>frameR</code> pipeline
-using a simplified version of the analysis presented in the accompanying
-methods paper. We examine whether the French National Rally shifted its
-immigration framing between an early period (1997-2011) and a later
-period (2012-2022).</p>
-<div id="step-1-load-a-model" class="section level3">
-<h3>Step 1: Load a Model</h3>
-<p>Load the base sentence embedding model. For political manifesto text
-we recommend the MARPOR-adapted model when available — see
-<code>?load_model</code> for details.</p>
+<div id="a-complete-example-immigration-framing-across-french-parties" class="section level2">
+<h2>A Complete Example: Immigration Framing Across French Parties</h2>
+<p>This example demonstrates the full <code>frameR</code> pipeline using
+real manifesto data. We compare how the French National Rally and the
+Socialist Party framed immigration in their 2022 electoral manifestos,
+using quasi-sentences from the Comparative Manifesto Project as
+collected and distributed with this package.</p>
+<p>This illustrates a cross-party comparison research design: do parties
+with different ideological positions frame the same issue in
+semantically distinct ways? Frame theory predicts yes — not only should
+their policy positions differ, but the evaluative dimensions through
+which they discuss immigration should differ as well.</p>
+<div id="the-data" class="section level3">
+<h3>The Data</h3>
+<p><code>frameR</code> includes a built-in dataset of 4,240
+quasi-sentences from the 2022 French legislative election manifestos of
+the National Rally (RN, party code 31720) and the Socialist Party (PS,
+party code 31320), as collected by the Comparative Manifesto
+Project.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">library</span>(frameR)</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">load_model</span>(<span class="st">&quot;base&quot;</span>)</span></code></pre></div>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="co"># Load the bundled example data</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="fu">data</span>(vignette_data)</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="co"># Inspect</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="fu">head</span>(vignette_data)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">nrow</span>(vignette_data)</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="fu">table</span>(vignette_data<span class="sc">$</span>party_name)</span></code></pre></div>
 </div>
-<div id="step-2-prepare-your-corpus" class="section level3">
-<h3>Step 2: Prepare Your Corpus</h3>
-<p><code>frameR</code> expects a character vector of sentences and a
-corresponding numeric vector of years. Your corpus should be
-pre-processed into individual sentences before passing to the
-package.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co"># In practice, load your corpus from a CSV or data frame:</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="co"># corpus &lt;- read.csv(&quot;my_manifesto_corpus.csv&quot;)</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="co"># sentences &lt;- corpus$text</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="co"># years     &lt;- corpus$year</span></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a></span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a><span class="co"># For illustration we use a small example corpus</span></span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>sentences <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="st">&quot;L&#39;immigration coûte cher à l&#39;État providence.&quot;</span>,</span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="st">&quot;Les immigrés prennent les emplois des travailleurs français.&quot;</span>,</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="st">&quot;Notre culture et nos valeurs sont menacées.&quot;</span>,</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>  <span class="st">&quot;Nous devons protéger l&#39;identité nationale.&quot;</span>,</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  <span class="st">&quot;La sécurité aux frontières est essentielle.&quot;</span>,</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="st">&quot;La criminalité augmente avec l&#39;immigration illégale.&quot;</span>,</span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="st">&quot;L&#39;économie souffre d&#39;une migration incontrôlée.&quot;</span>,</span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="st">&quot;La France ne peut plus se permettre l&#39;immigration.&quot;</span>,</span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  <span class="st">&quot;L&#39;immigration massive remet en cause nos valeurs républicaines.&quot;</span>,</span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  <span class="st">&quot;Il faut protéger les femmes contre les cultures incompatibles.&quot;</span></span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>)</span>
-<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a></span>
-<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>years <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
-<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>  <span class="dv">1997</span>, <span class="dv">1997</span>, <span class="dv">2002</span>, <span class="dv">2002</span>,</span>
-<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>  <span class="dv">2012</span>, <span class="dv">2012</span>, <span class="dv">2017</span>, <span class="dv">2017</span>,</span>
-<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>  <span class="dv">2022</span>, <span class="dv">2022</span></span>
-<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>)</span></code></pre></div>
+<div id="step-1-load-a-model" class="section level3">
+<h3>Step 1: Load a Model</h3>
+<p>Load the MARPOR-adapted embedding model. This model has been
+fine-tuned on EU27 party manifestos and is the recommended default for
+political text applications.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">load_model</span>()</span></code></pre></div>
+<p>For applications outside the EU27 manifesto context, the base
+multilingual model is available:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">load_model</span>(<span class="st">&quot;base&quot;</span>)</span></code></pre></div>
 </div>
-<div id="step-3-embed-the-corpus" class="section level3">
-<h3>Step 3: Embed the Corpus</h3>
-<p>Embed all sentences using the loaded model. Embeddings are computed
-once and reused across all downstream steps — do not re-embed between
-steps.</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>embeddings <span class="ot">&lt;-</span> <span class="fu">embed_corpus</span>(sentences, model)</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="co"># embeddings is a matrix: one row per sentence, 768 columns</span></span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="fu">dim</span>(embeddings)</span></code></pre></div>
+<div id="step-2-embed-the-corpus" class="section level3">
+<h3>Step 2: Embed the Corpus</h3>
+<p>Embed all sentences once. Embeddings are stored and reused across all
+downstream steps.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>embeddings <span class="ot">&lt;-</span> <span class="fu">embed_corpus</span>(vignette_data<span class="sc">$</span>text, model)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">dim</span>(embeddings) <span class="co"># 4240 x 768</span></span></code></pre></div>
 </div>
-<div id="step-4-identify-issue-relevant-sentences" class="section level3">
-<h3>Step 4: Identify Issue-Relevant Sentences</h3>
-<p>Identify which sentences discuss immigration using the recommended
-dual-criteria approach: keyword matching combined with semantic
-similarity thresholding.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>topic_mask <span class="ot">&lt;-</span> <span class="fu">identify_topic_sentences</span>(</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="at">sentences    =</span> sentences,</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="at">embeddings   =</span> embeddings,</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="at">anchor_words =</span> <span class="fu">c</span>(<span class="st">&quot;immigration&quot;</span>, <span class="st">&quot;immigrés&quot;</span>, </span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>                   <span class="st">&quot;migration&quot;</span>, <span class="st">&quot;immigré&quot;</span>),</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="at">model        =</span> model,</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="at">threshold    =</span> <span class="fl">0.5</span>,</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="at">method       =</span> <span class="st">&quot;both&quot;</span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>)</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a></span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="co"># Check how many sentences were identified</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="fu">sum</span>(topic_mask)</span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a></span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="co"># Inspect identified sentences</span></span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>sentences[topic_mask]</span></code></pre></div>
+<div id="step-3-identify-immigration-relevant-sentences" class="section level3">
+<h3>Step 3: Identify Immigration-Relevant Sentences</h3>
+<p>Identify sentences discussing immigration using the dual-criteria
+approach: keyword matching combined with semantic similarity
+thresholding. Keywords are specified in French to match the corpus
+language.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>topic_mask <span class="ot">&lt;-</span> <span class="fu">identify_topic_sentences</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">sentences    =</span> vignette_data<span class="sc">$</span>text,</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  <span class="at">embeddings   =</span> embeddings,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">anchor_words =</span> <span class="fu">c</span>(</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>    <span class="st">&quot;immigration&quot;</span>, <span class="st">&quot;immigré&quot;</span>, <span class="st">&quot;immigrés&quot;</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    <span class="st">&quot;migration&quot;</span>, <span class="st">&quot;migrant&quot;</span>, <span class="st">&quot;migrants&quot;</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="st">&quot;asylum&quot;</span>, <span class="st">&quot;réfugié&quot;</span>, <span class="st">&quot;réfugiés&quot;</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  ),</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">model        =</span> model,</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">threshold    =</span> <span class="fl">0.5</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>  <span class="at">method       =</span> <span class="st">&quot;both&quot;</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>)</span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># How many immigration sentences per party?</span></span>
+<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a><span class="fu">table</span>(vignette_data<span class="sc">$</span>party_name[topic_mask])</span></code></pre></div>
 <p>We recommend checking robustness to the threshold value by running
-the identification step under alternative thresholds (0.3, 0.5, 0.7) and
-confirming that substantive findings are stable.</p>
+the identification step under alternative thresholds (0.3, 0.5,
+0.7).</p>
 </div>
-<div id="step-5-specify-and-embed-frame-categories" class="section level3">
-<h3>Step 5: Specify and Embed Frame Categories</h3>
-<p>Specify frame categories as named lists of keywords, derived from the
-theoretical and empirical literature on your issue and context. Keywords
-should be in the language of your target corpus.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>frame_categories <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>    <span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emplois&quot;</span>, <span class="st">&quot;emploi&quot;</span>, </span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>    <span class="st">&quot;welfare&quot;</span>, <span class="st">&quot;État providence&quot;</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  ),</span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(</span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>    <span class="st">&quot;culture&quot;</span>, <span class="st">&quot;valeurs&quot;</span>, <span class="st">&quot;tradition&quot;</span>, </span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>    <span class="st">&quot;égalité&quot;</span>, <span class="st">&quot;islam&quot;</span>, <span class="st">&quot;laïcité&quot;</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  ),</span>
-<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(</span>
-<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>    <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;frontière&quot;</span>, <span class="st">&quot;terrorisme&quot;</span>, </span>
-<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>    <span class="st">&quot;sécurité&quot;</span>, <span class="st">&quot;illégal&quot;</span></span>
-<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>  )</span>
-<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a>)</span>
-<span id="cb8-15"><a href="#cb8-15" tabindex="-1"></a></span>
-<span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a>keyword_embeddings <span class="ot">&lt;-</span> <span class="fu">embed_keywords</span>(frame_categories, model)</span></code></pre></div>
-<div id="robustness-to-keyword-specification" class="section level4">
-<h4>Robustness to Keyword Specification</h4>
-<p>Because frame categories are researcher-specified, we recommend
-checking robustness under broader and stricter keyword sets. Here is an
-example for the Economic frame:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="co"># Broader Economic specification</span></span>
-<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>frames_broader <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(</span>
-<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emplois&quot;</span>, <span class="st">&quot;emploi&quot;</span>, <span class="st">&quot;welfare&quot;</span>,</span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>    <span class="st">&quot;État providence&quot;</span>, <span class="st">&quot;travail&quot;</span>, <span class="st">&quot;salaire&quot;</span>, </span>
-<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>    <span class="st">&quot;chômage&quot;</span>, <span class="st">&quot;coût&quot;</span>, <span class="st">&quot;charges&quot;</span></span>
-<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  ),</span>
-<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(</span>
-<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>    <span class="st">&quot;culture&quot;</span>, <span class="st">&quot;valeurs&quot;</span>, <span class="st">&quot;tradition&quot;</span>, <span class="st">&quot;égalité&quot;</span>,</span>
-<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>    <span class="st">&quot;islam&quot;</span>, <span class="st">&quot;laïcité&quot;</span>, <span class="st">&quot;identité&quot;</span>, <span class="st">&quot;nation&quot;</span>,</span>
-<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>    <span class="st">&quot;patrimoine&quot;</span>, <span class="st">&quot;intégration&quot;</span></span>
-<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>  ),</span>
-<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(</span>
-<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>    <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;frontière&quot;</span>, <span class="st">&quot;terrorisme&quot;</span>, <span class="st">&quot;sécurité&quot;</span>,</span>
-<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a>    <span class="st">&quot;illégal&quot;</span>, <span class="st">&quot;police&quot;</span>, <span class="st">&quot;délinquance&quot;</span>, <span class="st">&quot;violence&quot;</span>,</span>
-<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>    <span class="st">&quot;ordre&quot;</span>, <span class="st">&quot;contrôle&quot;</span></span>
-<span id="cb9-17"><a href="#cb9-17" tabindex="-1"></a>  )</span>
-<span id="cb9-18"><a href="#cb9-18" tabindex="-1"></a>)</span>
-<span id="cb9-19"><a href="#cb9-19" tabindex="-1"></a></span>
-<span id="cb9-20"><a href="#cb9-20" tabindex="-1"></a><span class="co"># Stricter Economic specification  </span></span>
-<span id="cb9-21"><a href="#cb9-21" tabindex="-1"></a>frames_stricter <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
-<span id="cb9-22"><a href="#cb9-22" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(<span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emploi&quot;</span>, <span class="st">&quot;chômage&quot;</span>),</span>
-<span id="cb9-23"><a href="#cb9-23" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(<span class="st">&quot;culture&quot;</span>, <span class="st">&quot;tradition&quot;</span>, <span class="st">&quot;laïcité&quot;</span>),</span>
-<span id="cb9-24"><a href="#cb9-24" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(<span class="st">&quot;terrorisme&quot;</span>, <span class="st">&quot;sécurité&quot;</span>, <span class="st">&quot;frontière&quot;</span>)</span>
-<span id="cb9-25"><a href="#cb9-25" tabindex="-1"></a>)</span></code></pre></div>
-<p>Run the full analysis under each specification and confirm that
-directional findings are consistent.</p>
+<div id="step-4-specify-and-embed-frame-categories" class="section level3">
+<h3>Step 4: Specify and Embed Frame Categories</h3>
+<p>Specify frame categories derived from the theoretical literature on
+far-right immigration framing (Helbling 2014; Rydgren 2008). Keywords
+are specified in French.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>frame_categories <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    <span class="st">&quot;économie&quot;</span>, <span class="st">&quot;emplois&quot;</span>, <span class="st">&quot;emploi&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>    <span class="st">&quot;welfare&quot;</span>, <span class="st">&quot;État providence&quot;</span>, <span class="st">&quot;coût&quot;</span>, <span class="st">&quot;charges&quot;</span></span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  ),</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>    <span class="st">&quot;culture&quot;</span>, <span class="st">&quot;valeurs&quot;</span>, <span class="st">&quot;tradition&quot;</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>    <span class="st">&quot;identité&quot;</span>, <span class="st">&quot;islam&quot;</span>, <span class="st">&quot;laïcité&quot;</span>, <span class="st">&quot;nation&quot;</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  ),</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>    <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;frontière&quot;</span>, <span class="st">&quot;terrorisme&quot;</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>    <span class="st">&quot;sécurité&quot;</span>, <span class="st">&quot;illégal&quot;</span>, <span class="st">&quot;violence&quot;</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>  )</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a>)</span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a></span>
+<span id="cb9-16"><a href="#cb9-16" tabindex="-1"></a>keyword_embeddings <span class="ot">&lt;-</span> <span class="fu">embed_keywords</span>(frame_categories, model)</span></code></pre></div>
 </div>
+<div id="step-5-measure-frame-strength" class="section level3">
+<h3>Step 5: Measure Frame Strength</h3>
+<p>Measure frame strength for each party treating party membership as
+the comparison dimension. We use party codes as period labels since
+<code>measure_frames</code> compares exactly two groups.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="co"># Assign synthetic years by party for comparison</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="co"># RN = period 1, PS = period 2</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>comparison_years <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  vignette_data<span class="sc">$</span>party_name <span class="sc">==</span> <span class="st">&quot;National Rally&quot;</span>, <span class="dv">1</span>, <span class="dv">2</span></span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>)</span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">measure_frames</span>(</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  <span class="at">embeddings         =</span> embeddings,</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="at">topic_mask         =</span> topic_mask,</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>  <span class="at">keyword_embeddings =</span> keyword_embeddings,</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>  <span class="at">periods            =</span> <span class="fu">list</span>(</span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>    <span class="st">`</span><span class="at">National Rally</span><span class="st">`</span>   <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>),</span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>    <span class="st">`</span><span class="at">Socialist Party</span><span class="st">`</span>  <span class="ot">=</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>)</span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a>  ),</span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a>  <span class="at">years              =</span> comparison_years,</span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a>  <span class="at">n_bootstrap        =</span> <span class="dv">10000</span><span class="dt">L</span>,</span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a>  <span class="at">n_permutations     =</span> <span class="dv">10000</span><span class="dt">L</span>,</span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a>  <span class="at">seed               =</span> <span class="dv">42</span><span class="dt">L</span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a>)</span></code></pre></div>
 </div>
-<div id="step-6-measure-frame-strength" class="section level3">
-<h3>Step 6: Measure Frame Strength</h3>
-<p>Measure frame strength across time periods using bootstrap inference
-and permutation tests.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>results <span class="ot">&lt;-</span> <span class="fu">measure_frames</span>(</span>
-<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>  <span class="at">embeddings         =</span> embeddings,</span>
-<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>  <span class="at">topic_mask         =</span> topic_mask,</span>
-<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>  <span class="at">keyword_embeddings =</span> keyword_embeddings,</span>
-<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a>  <span class="at">periods            =</span> <span class="fu">list</span>(</span>
-<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a>    <span class="at">Latency    =</span> <span class="fu">c</span>(<span class="dv">1997</span>, <span class="dv">2002</span>),</span>
-<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>    <span class="at">Activation =</span> <span class="fu">c</span>(<span class="dv">2012</span>, <span class="dv">2022</span>)</span>
-<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>  ),</span>
-<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>  <span class="at">years              =</span> years,</span>
-<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>  <span class="at">n_bootstrap        =</span> <span class="dv">10000</span><span class="dt">L</span>,</span>
-<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>  <span class="at">n_permutations     =</span> <span class="dv">10000</span><span class="dt">L</span>,</span>
-<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a>  <span class="at">seed               =</span> <span class="dv">42</span><span class="dt">L</span></span>
-<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a>)</span></code></pre></div>
-</div>
-<div id="step-7-inspect-and-plot-results" class="section level3">
-<h3>Step 7: Inspect and Plot Results</h3>
+<div id="step-6-inspect-and-plot-results" class="section level3">
+<h3>Step 6: Inspect and Plot Results</h3>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">print</span>(results)</span></code></pre></div>
-<p>The print output shows:</p>
-<ul>
-<li><strong>Frame Similarity</strong>: Bootstrap mean and 95% confidence
-interval for each frame category and period. Higher values indicate
-stronger semantic association between issue discourse and that frame
-category.</li>
-<li><strong>Between-Period Differences</strong>: The change in mean
-frame similarity from the first to the second period, with permutation
-test p-values. Positive values indicate increased framing in the second
-period.</li>
-<li><strong>Relative Frame Emphasis</strong>: Frame similarities
-normalized within each period so they sum to 1. Use these to assess
-which frame is dominant within a period, not to compare absolute levels
-across frame categories.</li>
-</ul>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="co"># Full three-panel plot</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="fu">plot</span>(results)</span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a><span class="co"># Individual panels</span></span>
-<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a><span class="fu">plot</span>(results, <span class="at">type =</span> <span class="st">&quot;similarity&quot;</span>)</span>
-<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a><span class="fu">plot</span>(results, <span class="at">type =</span> <span class="st">&quot;ratios&quot;</span>)</span>
-<span id="cb12-7"><a href="#cb12-7" tabindex="-1"></a><span class="fu">plot</span>(results, <span class="at">type =</span> <span class="st">&quot;differences&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">plot</span>(results)</span></code></pre></div>
 </div>
 </div>
 <div id="interpreting-results" class="section level2">
 <h2>Interpreting Results</h2>
-<div id="what-cosine-similarity-values-mean" class="section level3">
-<h3>What cosine similarity values mean</h3>
-<p>Cosine similarity scores are not interpretable in absolute terms. A
-similarity of 0.4 to the Economic frame keywords does not mean the party
-uses economic frames 40% of the time. What is meaningful is comparison:
-an increase from 0.3 to 0.4 across periods indicates that the discourse
-has become more semantically proximate to economic considerations.</p>
+<div id="absolute-frame-similarity" class="section level3">
+<h3>Absolute frame similarity</h3>
+<p>Higher cosine similarity indicates stronger semantic association
+between a party’s immigration discourse and a frame category’s
+evaluative considerations. These scores are not interpretable in
+absolute terms — what matters is the comparison between parties.</p>
 </div>
-<div id="comparing-across-frame-categories" class="section level3">
-<h3>Comparing across frame categories</h3>
-<p>Do not compare absolute similarity scores across frame categories
-within a single period. Some concepts are inherently closer together in
-embedding space than others for reasons that reflect general language
-patterns rather than party strategy. Use the relative emphasis (ratio)
-scores for within-period cross-frame comparison.</p>
+<div id="relative-frame-emphasis" class="section level3">
+<h3>Relative frame emphasis</h3>
+<p>Relative emphasis scores normalize similarities within each party so
+they sum to one. These reveal which frame dominates each party’s
+immigration discourse regardless of absolute similarity levels.</p>
 </div>
-<div id="statistical-significance" class="section level3">
-<h3>Statistical significance</h3>
-<p>P-values from the permutation test indicate whether between-period
-differences are distinguishable from chance. Report both the magnitude
-of the difference and the p-value — statistical significance alone
-carries limited meaning when corpora are very large or effect sizes are
-very small.</p>
+<div id="between-group-differences" class="section level3">
+<h3>Between-group differences</h3>
+<p>The permutation test assesses whether observed differences between
+parties are statistically distinguishable from chance. A positive
+difference indicates the Socialist Party scores higher on that frame; a
+negative difference indicates the National Rally scores higher.</p>
 </div>
 </div>
 <div id="cross-lingual-applications" class="section level2">
 <h2>Cross-Lingual Applications</h2>
-<p><code>frameR</code> supports cross-lingual analysis through
-multilingual embedding models. For cross-national comparisons spanning
-multiple languages, use a multilingual model:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Load a multilingual model</span></span>
-<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>model_multi <span class="ot">&lt;-</span> <span class="fu">load_model</span>(</span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>  <span class="st">&quot;sentence-transformers/paraphrase-multilingual-mpnet-base-v2&quot;</span></span>
-<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>)</span></code></pre></div>
-<p>When applying the method across languages, translate and validate
-frame category keywords independently for each language rather than
-translating mechanically. Frame-associated vocabulary does not always
-translate directly across political and cultural contexts.</p>
+<p><code>frameR</code> supports cross-lingual analysis through the
+multilingual MARPOR-adapted model. The same pipeline applies to corpora
+in any of the 24 EU official languages — simply specify anchor words and
+frame keywords in the language of your target corpus.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># German immigration keywords</span></span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>anchor_de <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Einwanderung&quot;</span>, <span class="st">&quot;Einwanderer&quot;</span>, <span class="st">&quot;Migration&quot;</span>,</span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>               <span class="st">&quot;Asyl&quot;</span>, <span class="st">&quot;Flüchtling&quot;</span>)</span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>frames_de <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>  <span class="at">Economic =</span> <span class="fu">c</span>(<span class="st">&quot;Wirtschaft&quot;</span>, <span class="st">&quot;Arbeitsplätze&quot;</span>, <span class="st">&quot;Sozialsystem&quot;</span>,</span>
+<span id="cb13-7"><a href="#cb13-7" tabindex="-1"></a>               <span class="st">&quot;Kosten&quot;</span>, <span class="st">&quot;Löhne&quot;</span>),</span>
+<span id="cb13-8"><a href="#cb13-8" tabindex="-1"></a>  <span class="at">Cultural =</span> <span class="fu">c</span>(<span class="st">&quot;Kultur&quot;</span>, <span class="st">&quot;Werte&quot;</span>, <span class="st">&quot;Tradition&quot;</span>,</span>
+<span id="cb13-9"><a href="#cb13-9" tabindex="-1"></a>               <span class="st">&quot;Identität&quot;</span>, <span class="st">&quot;Islam&quot;</span>, <span class="st">&quot;Nation&quot;</span>),</span>
+<span id="cb13-10"><a href="#cb13-10" tabindex="-1"></a>  <span class="at">Security =</span> <span class="fu">c</span>(<span class="st">&quot;Kriminalität&quot;</span>, <span class="st">&quot;Grenze&quot;</span>, <span class="st">&quot;Terrorismus&quot;</span>,</span>
+<span id="cb13-11"><a href="#cb13-11" tabindex="-1"></a>               <span class="st">&quot;Sicherheit&quot;</span>, <span class="st">&quot;illegal&quot;</span>)</span>
+<span id="cb13-12"><a href="#cb13-12" tabindex="-1"></a>)</span></code></pre></div>
 </div>
 <div id="domain-adaptation" class="section level2">
 <h2>Domain Adaptation</h2>
-<p>For best results with political manifesto text, fine-tune the
-embedding model on a domain-relevant corpus before analysis. Fine-tuning
-makes the embedding space more sensitive to the semantic register of
-political text, producing more precise frame measures.</p>
-<p>The fine-tuning corpus should be:</p>
-<ul>
-<li>From the same genre as your target corpus (e.g. party
-manifestos)</li>
-<li>Distinct from your target corpus to avoid circularity</li>
-<li>Reasonably large (several hundred documents minimum)</li>
-</ul>
-<p>A model pre-trained on the full Comparative Manifesto Project corpus
-will be made available on Hugging Face upon publication of the
-accompanying methods paper. Once available it can be loaded as the
-default:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Coming soon - MARPOR-adapted model</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">load_model</span>(<span class="st">&quot;spenccorp/frameR-marpor&quot;</span>)</span></code></pre></div>
+<p>The default <code>frameR-marpor</code> model has been fine-tuned on
+EU27 party manifestos from the Comparative Manifesto Project, covering
+24 languages and decades of electoral competition. This adaptation makes
+the embedding space more sensitive to the semantic register of political
+manifesto text.</p>
+<p>For applications outside this domain, fine-tune a custom model:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="co"># Fine-tune on your own domain corpus</span></span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># (exclude your target corpus to avoid circularity)</span></span>
+<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a>custom_model <span class="ot">&lt;-</span> <span class="fu">load_model</span>(<span class="st">&quot;base&quot;</span>)</span>
+<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="co"># See ?load_model for fine-tuning utilities</span></span></code></pre></div>
 </div>
 <div id="references" class="section level2">
 <h2>References</h2>
 <p>Druckman, James N. (2011). “What’s it all about? Framing in political
 science.” In <em>Perspectives on framing</em>, pp. 282-296. Psychology
 Press.</p>
+<p>Helbling, Marc (2014). “Framing immigration in western Europe.”
+<em>Journal of Ethnic and Migration Studies</em> 40(1): 21-41.</p>
 <p>Reimers, Nils and Iryna Gurevych (2019). “Sentence-BERT: Sentence
 embeddings using Siamese BERT-networks.” In <em>Proceedings of
 EMNLP</em>.</p>
+<p>Rydgren, Jens (2008). “Immigration sceptics, xenophobes or racists?
+Radical right-wing voting in six West European countries.” <em>European
+Journal of Political Research</em> 47(6): 737-765.</p>
+<p>Volkens, Andrea, et al. (2021). The Manifesto Data Collection.
+Manifesto Project (MRG/CMP/MARPOR). Version 2021b. Berlin:
+Wissenschaftszentrum Berlin für Sozialforschung (WZB).</p>
 </div>
 
 

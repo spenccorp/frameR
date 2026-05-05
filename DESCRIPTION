@@ -39,3 +39,6 @@ Suggests:
 VignetteBuilder: knitr
 URL: https://github.com/spenccorp/frameR
 BugReports: https://github.com/spenccorp/frameR/issues
+Depends: 
+    R (>= 3.5)
+LazyData: true
