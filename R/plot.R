@@ -16,6 +16,9 @@ NULL
 #' @param type Character. One of \code{"all"}, \code{"similarity"},
 #'   \code{"ratios"}, or \code{"differences"}. Default \code{"all"}.
 #' @param ... Additional arguments (ignored).
+#' @param type Character. One of \code{"all"}, \code{"similarity"},
+#'   \code{"ratios"}, \code{"differences"}, or \code{"variance"}.
+#'   Default \code{"all"}.
 #'
 #' @return Called for its side effects. Produces a plot.
 #'
@@ -168,6 +171,38 @@ plot.frameR_results <- function(x, type = "all", ...) {
     )
 
   # --------------------------------------------------------
+  # Plot 4: Frame variance by period
+  # --------------------------------------------------------
+
+  p4 <- ggplot2::ggplot(
+    x$variance,
+    ggplot2::aes(
+      x    = .data$period,
+      y    = .data$mean,
+      ymin = .data$ci_lower,
+      ymax = .data$ci_upper
+    )
+  ) +
+    ggplot2::geom_col(
+      fill  = "#2c3e50",
+      alpha = 0.85,
+      width = 0.5
+    ) +
+    ggplot2::geom_errorbar(width = 0.2) +
+    ggplot2::labs(
+      title = "Frame Concentration",
+      subtitle = "Higher values indicate more concentrated framing",
+      x     = "Period",
+      y     = "Frame Variance"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title    = ggplot2::element_text(face = "bold"),
+      plot.subtitle = ggplot2::element_text(size = 9)
+    )
+
+
+  # --------------------------------------------------------
   # Return requested plots
   # --------------------------------------------------------
 
@@ -177,8 +212,9 @@ plot.frameR_results <- function(x, type = "all", ...) {
     print(p2)
   } else if (type == "differences") {
     print(p3)
+  } else if (type == "variance") {
+    print(p4)
   } else {
-
     if (!requireNamespace("patchwork", quietly = TRUE)) {
       message(
         "Install patchwork for combined plots: ",
@@ -188,11 +224,10 @@ plot.frameR_results <- function(x, type = "all", ...) {
       print(p1)
       print(p2)
       print(p3)
+      print(p4)
     } else {
-      combined <- (p1 | p2) / p3
+      combined <- (p1 | p2) / (p3 | p4)
       print(combined)
     }
   }
-
-  invisible(x)
 }

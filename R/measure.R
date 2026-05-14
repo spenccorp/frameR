@@ -1,195 +1,357 @@
-# frameR/R/plot.R
-# Visualization functions for frameR results
+# frameR/R/measure.R
+# Frame strength measurement, bootstrap inference,
+# permutation testing, and relative emphasis
 
-#' Plot frame similarity results
+#' Measure frame strength across time periods
 #'
-#' Produces a set of diagnostic and results plots for a
-#' \code{frameR_results} object. By default produces three panels:
-#' absolute frame similarity by period, relative frame emphasis
-#' by period, and between-period differences with significance.
+#' The core function of the frameR package. Measures the strength
+#' of theoretically specified frames in topic-relevant discourse
+#' across two time periods, quantifies uncertainty through bootstrap
+#' inference, tests for between-period differences using permutation
+#' tests, and computes relative frame emphasis scores.
 #'
-#' @param x A \code{frameR_results} object returned by
-#'   \code{\link{measure_frames}}.
-#' @param type Character. One of \code{"all"}, \code{"similarity"},
-#'   \code{"ratios"}, or \code{"differences"}. Default \code{"all"}.
-#' @param ... Additional arguments (ignored).
+#' @param embeddings A numeric matrix of sentence embeddings returned
+#'   by \code{\link{embed_corpus}}.
+#' @param topic_mask A logical vector returned by
+#'   \code{\link{identify_topic_sentences}}.
+#' @param keyword_embeddings A named list returned by
+#'   \code{\link{embed_keywords}}.
+#' @param periods A named list of length-2 numeric vectors specifying
+#'   the start and end year of each period. Exactly two periods are
+#'   required for permutation testing.
+#'   Example:
+#'   \code{list(
+#'     Latency    = c(1997, 2011),
+#'     Activation = c(2012, 2022)
+#'   )}
+#' @param years A numeric vector of the same length as \code{sentences}
+#'   giving the year of each sentence. Used to assign sentences to
+#'   periods.
+#' @param n_bootstrap Integer. Number of bootstrap iterations.
+#'   Default 10000. Reduce to 1000 for exploratory analyses.
+#' @param n_permutations Integer. Number of permutation draws for
+#'   between-period significance testing. Default 10000.
+#' @param seed Integer. Random seed for reproducibility. Default 42.
 #'
-#' @return Called for its side effects. Produces a plot.
+#' @return An object of class \code{"frameR_results"} containing:
+#'   \itemize{
+#'     \item \code{summary}: Data frame of bootstrap summary statistics
+#'       (mean, sd, 95\% CI) per frame category and period.
+#'     \item \code{permutation_tests}: Data frame of between-period
+#'       differences and p-values per frame category.
+#'     \item \code{ratios}: Data frame of relative frame emphasis
+#'       scores per frame category and period.
+#'     \item \code{boot_results}: Raw bootstrap distributions.
+#'       Used internally by \code{\link{plot.frameR_results}}.
+#'     \item \code{periods}: The period specification passed in.
+#'     \item \code{call}: The matched call.
+#'   }
+#'
+#' @details
+#' The bootstrap procedure resamples topic-relevant sentences with
+#' replacement within each period across \code{n_bootstrap} iterations,
+#' computing frame similarity at each iteration to produce an empirical
+#' distribution of frame strength estimates. Sentence embeddings are
+#' pre-computed and fixed across bootstrap iterations; only the
+#' resampling indices vary. This makes 10,000 iterations computationally
+#' feasible on standard hardware.
+#'
+#' The permutation test assesses whether the observed between-period
+#' difference in mean frame similarity is distinguishable from chance
+#' under the null hypothesis of no difference. It operates on the
+#' bootstrap distributions rather than raw sentence-level scores.
+#'
+#' Relative emphasis scores normalize frame similarities within each
+#' bootstrap iteration so that scores across categories sum to one,
+#' enabling within-period comparison of relative frame dominance.
+#' Absolute similarity scores should not be compared across frame
+#' categories directly.
+#'
+#' @seealso \code{\link{plot.frameR_results}},
+#'   \code{\link{embed_corpus}},
+#'   \code{\link{identify_topic_sentences}},
+#'   \code{\link{embed_keywords}}
 #'
 #' @examples
 #' \dontrun{
-#' results <- measure_frames(...)
+#' model <- load_model()
+#'
+#' # Embed corpus
+#' embeddings <- embed_corpus(my_corpus$text, model)
+#'
+#' # Identify topic sentences
+#' topic_mask <- identify_topic_sentences(
+#'   sentences    = my_corpus$text,
+#'   embeddings   = embeddings,
+#'   anchor_words = c("immigration", "immigrant", "migration"),
+#'   model        = model
+#' )
+#'
+#' # Specify and embed frame categories
+#' frame_categories <- list(
+#'   Economic = c("economy", "jobs", "welfare", "employment"),
+#'   Cultural = c("culture", "values", "identity", "tradition"),
+#'   Security = c("crime", "border", "terrorism", "security")
+#' )
+#' keyword_embeddings <- embed_keywords(frame_categories, model)
+#'
+#' # Measure frames
+#' results <- measure_frames(
+#'   embeddings        = embeddings,
+#'   topic_mask        = topic_mask,
+#'   keyword_embeddings = keyword_embeddings,
+#'   periods           = list(Early = c(1997, 2011),
+#'                            Late  = c(2012, 2022)),
+#'   years             = my_corpus$year
+#' )
+#'
+#' print(results)
 #' plot(results)
-#' plot(results, type = "differences")
 #' }
 #'
 #' @export
-plot.frameR_results <- function(x, type = "all", ...) {
+measure_frames <- function(embeddings,
+                           topic_mask,
+                           keyword_embeddings,
+                           periods,
+                           years,
+                           n_bootstrap    = 10000L,
+                           n_permutations = 10000L,
+                           seed           = 42L) {
 
-  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+  check_python_env()
+
+  # Input validation
+  if (!is.matrix(embeddings)) {
+    stop("embeddings must be a matrix returned by embed_corpus().",
+         call. = FALSE)
+  }
+
+  if (!is.logical(topic_mask)) {
+    stop("topic_mask must be a logical vector returned by ",
+         "identify_topic_sentences().",
+         call. = FALSE)
+  }
+
+  if (length(topic_mask) != nrow(embeddings)) {
     stop(
-      "ggplot2 is required for plotting. ",
-      "Install it with: install.packages('ggplot2')",
+      "topic_mask length (", length(topic_mask), ") must equal ",
+      "nrow(embeddings) (", nrow(embeddings), ").",
       call. = FALSE
     )
   }
 
-  type <- match.arg(type, c("all", "similarity",
-                            "ratios", "differences"))
-
-  period_names <- names(x$periods)
-
-  # --------------------------------------------------------
-  # Plot 1: Absolute frame similarity by period
-  # --------------------------------------------------------
-
-  p1 <- ggplot2::ggplot(
-    x$summary,
-    ggplot2::aes(
-      x     = .data$frame,
-      y     = .data$mean,
-      ymin  = .data$ci_lower,
-      ymax  = .data$ci_upper,
-      fill  = .data$period,
-      group = .data$period
+  if (length(years) != nrow(embeddings)) {
+    stop(
+      "years length (", length(years), ") must equal ",
+      "nrow(embeddings) (", nrow(embeddings), ").",
+      call. = FALSE
     )
-  ) +
-    ggplot2::geom_col(
-      position = ggplot2::position_dodge(width = 0.6),
-      width    = 0.5,
-      alpha    = 0.85
-    ) +
-    ggplot2::geom_errorbar(
-      position = ggplot2::position_dodge(width = 0.6),
-      width    = 0.2
-    ) +
-    ggplot2::labs(
-      title = "Absolute Frame Similarity by Period",
-      x     = "Frame Category",
-      y     = "Mean Cosine Similarity",
-      fill  = "Period"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      plot.title   = ggplot2::element_text(face = "bold"),
-      legend.position = "bottom"
-    )
-
-  # --------------------------------------------------------
-  # Plot 2: Relative frame emphasis by period
-  # --------------------------------------------------------
-
-  p2 <- ggplot2::ggplot(
-    x$ratios,
-    ggplot2::aes(
-      x     = .data$frame,
-      y     = .data$mean_ratio,
-      ymin  = .data$ci_lower,
-      ymax  = .data$ci_upper,
-      fill  = .data$period,
-      group = .data$period
-    )
-  ) +
-    ggplot2::geom_col(
-      position = ggplot2::position_dodge(width = 0.6),
-      width    = 0.5,
-      alpha    = 0.85
-    ) +
-    ggplot2::geom_errorbar(
-      position = ggplot2::position_dodge(width = 0.6),
-      width    = 0.2
-    ) +
-    ggplot2::labs(
-      title = "Relative Frame Emphasis by Period",
-      x     = "Frame Category",
-      y     = "Proportion of Total Frame Similarity",
-      fill  = "Period"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      plot.title      = ggplot2::element_text(face = "bold"),
-      legend.position = "bottom"
-    )
-
-  # --------------------------------------------------------
-  # Plot 3: Between period differences with significance
-  # --------------------------------------------------------
-
-  diff_data <- x$permutation_tests
-  diff_data$label <- paste0(
-    round(diff_data$difference, 4),
-    " (", diff_data$significance, ")"
-  )
-  diff_data$positive <- diff_data$difference > 0
-
-  p3 <- ggplot2::ggplot(
-    diff_data,
-    ggplot2::aes(
-      x    = .data$difference,
-      y    = .data$frame,
-      fill = .data$positive
-    )
-  ) +
-    ggplot2::geom_col(alpha = 0.85, width = 0.5) +
-    ggplot2::geom_text(
-      ggplot2::aes(
-        label = .data$significance,
-        x     = .data$difference +
-          ifelse(.data$positive, 0.0005, -0.0005)
-      ),
-      hjust = ifelse(diff_data$positive, 0, 1),
-      size  = 4
-    ) +
-    ggplot2::geom_vline(
-      xintercept = 0,
-      linetype   = "dashed",
-      linewidth  = 0.5
-    ) +
-    ggplot2::scale_fill_manual(
-      values = c("TRUE" = "#2ecc71", "FALSE" = "#e74c3c"),
-      guide  = "none"
-    ) +
-    ggplot2::labs(
-      title    = paste0(
-        "Between-Period Differences\n(",
-        period_names[2], " \u2212 ", period_names[1], ")"
-      ),
-      x        = "Change in Cosine Similarity",
-      y        = "Frame Category",
-      caption  = "*** p<0.001  ** p<0.01  * p<0.05  ns = not significant"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      plot.title   = ggplot2::element_text(face = "bold"),
-      plot.caption = ggplot2::element_text(hjust = 0)
-    )
-
-  # --------------------------------------------------------
-  # Return requested plots
-  # --------------------------------------------------------
-
-  if (type == "similarity") {
-    print(p1)
-  } else if (type == "ratios") {
-    print(p2)
-  } else if (type == "differences") {
-    print(p3)
-  } else {
-
-    if (!requireNamespace("patchwork", quietly = TRUE)) {
-      message(
-        "Install patchwork for combined plots: ",
-        "install.packages('patchwork'). ",
-        "Printing plots separately."
-      )
-      print(p1)
-      print(p2)
-      print(p3)
-    } else {
-      combined <- (p1 | p2) / p3
-      print(combined)
-    }
   }
+
+  if (!is.list(periods) || is.null(names(periods))) {
+    stop("periods must be a named list.", call. = FALSE)
+  }
+
+  if (length(periods) != 2) {
+    stop(
+      "Exactly 2 periods are required for permutation testing. ",
+      "Received: ", length(periods),
+      call. = FALSE
+    )
+  }
+
+  period_names <- names(periods)
+  all_summaries <- list()
+  all_boot_results <- list()
+  all_ratio_summaries <- list()
+
+  # Process each period
+  for (period_name in period_names) {
+
+    year_range <- periods[[period_name]]
+
+    period_mask <- topic_mask &
+      years >= year_range[1] &
+      years <= year_range[2]
+
+    n_sentences <- sum(period_mask)
+
+    if (n_sentences == 0) {
+      stop(
+        "No topic-relevant sentences found in period '",
+        period_name, "' (", year_range[1], "-", year_range[2], "). ",
+        "Check your periods specification and topic_mask.",
+        call. = FALSE
+      )
+    }
+
+    message(
+      "\nPeriod '", period_name, "' (",
+      year_range[1], "-", year_range[2], "): ",
+      n_sentences, " topic-relevant sentences."
+    )
+
+    period_embeddings <- embeddings[period_mask, , drop = FALSE]
+
+    message("Running bootstrap (", n_bootstrap, " iterations)...")
+
+    boot_results <- pkg_env$bootstrap_frames(
+      doc_embeddings     = period_embeddings,
+      keyword_embeddings = keyword_embeddings,
+      n_boot             = as.integer(n_bootstrap),
+      seed               = as.integer(seed)
+    )
+
+    summary <- pkg_env$summarise_bootstrap(
+      boot_results = boot_results,
+      period_name  = period_name
+    )
+
+    ratio_results <- pkg_env$compute_ratios(
+      boot_results = boot_results
+    )
+
+    ratio_summary <- pkg_env$summarise_ratios(
+      ratio_results = ratio_results,
+      period_name   = period_name
+    )
+
+    all_summaries[[period_name]]      <- summary_to_dataframe(summary)
+    all_boot_results[[period_name]]   <- boot_results
+    all_ratio_summaries[[period_name]] <- summary_to_dataframe(ratio_summary)
+  }
+
+  # Separate variance from frame summaries
+  # Separate variance from frame summaries
+  combined_summary <- do.call(rbind, all_summaries) %>%
+    dplyr::filter(.data$frame != "frame_variance")
+
+  variance_summary <- do.call(rbind, all_summaries) %>%
+    dplyr::filter(.data$frame == "frame_variance") %>%
+    dplyr::select(.data$period, .data$mean, .data$sd,
+                  .data$ci_lower, .data$ci_upper)
+
+  combined_ratios <- do.call(rbind, all_ratio_summaries) %>%
+    dplyr::filter(.data$frame != "frame_variance")
+
+  rownames(combined_summary)  <- NULL
+  rownames(variance_summary)  <- NULL
+  rownames(combined_ratios)   <- NULL
+  # Permutation tests between the two periods
+  message("\nRunning permutation tests (", n_permutations, " draws)...")
+
+
+  perm_results <- pkg_env$permutation_test(
+    boot_results_1 = all_boot_results[[period_names[1]]],
+    boot_results_2 = all_boot_results[[period_names[2]]],
+    n_permutations = as.integer(n_permutations),
+    seed           = as.integer(seed)
+  )
+
+  perm_df <- summary_to_dataframe(perm_results)
+  rownames(perm_df) <- NULL
+
+  # Permutation test for frame variance
+  var_period_1 <- all_boot_results[[period_names[1]]][["frame_variance"]]
+  var_period_2 <- all_boot_results[[period_names[2]]][["frame_variance"]]
+
+  observed_var_diff <- mean(var_period_2) - mean(var_period_1)
+  pooled_var        <- c(var_period_1, var_period_2)
+  n1_var            <- length(var_period_1)
+
+  set.seed(seed)
+  perm_var_diffs <- replicate(n_permutations, {
+    shuffled <- sample(pooled_var)
+    mean(shuffled[seq_len(n1_var)]) -
+      mean(shuffled[(n1_var + 1):length(shuffled)])
+  })
+
+  var_p_value <- mean(abs(perm_var_diffs) >= abs(observed_var_diff))
+
+  var_perm_row <- data.frame(
+    frame        = "frame_variance",
+    difference   = observed_var_diff,
+    p_value      = var_p_value,
+    significance = dplyr::case_when(
+      var_p_value < 0.001 ~ "***",
+      var_p_value < 0.01  ~ "**",
+      var_p_value < 0.05  ~ "*",
+      TRUE                ~ "ns"
+    )
+  )
+
+  perm_df <- rbind(perm_df, var_perm_row)
+
+  # Assemble results object
+  results <- structure(
+    list(
+      summary           = combined_summary,
+      variance          = variance_summary,
+      permutation_tests = perm_df,
+      ratios            = combined_ratios,
+      boot_results      = all_boot_results,
+      periods           = periods,
+      call              = match.call()
+    ),
+    class = "frameR_results"
+  )
+
+  message("\nDone. Use print() or plot() to inspect results.")
+
+  return(results)
+}
+
+
+#' Print method for frameR_results
+#'
+#' @param x A \code{frameR_results} object.
+#' @param ... Additional arguments (ignored).
+#' @export
+#' @export
+print.frameR_results <- function(x, ...) {
+
+  cat("\n=== frameR Results ===\n\n")
+
+  cat("Periods:\n")
+  for (nm in names(x$periods)) {
+    cat("  ", nm, ": ",
+        x$periods[[nm]][1], "-", x$periods[[nm]][2], "\n",
+        sep = "")
+  }
+
+  cat("\nFrame Similarity (Bootstrap Estimates):\n")
+  print(
+    x$summary[, c("period", "frame", "mean",
+                  "ci_lower", "ci_upper")],
+    row.names = FALSE,
+    digits    = 4
+  )
+
+  cat("\nFrame Variance (Bootstrap Estimates):\n")
+  cat("Higher values indicate more concentrated framing\n")
+  cat("around a dominant category.\n\n")
+  print(
+    x$variance[, c("period", "mean", "ci_lower", "ci_upper")],
+    row.names = FALSE,
+    digits    = 6
+  )
+
+  cat("\nBetween-Period Differences (Permutation Tests):\n")
+  print(
+    x$permutation_tests[, c("frame", "difference",
+                            "p_value", "significance")],
+    row.names = FALSE,
+    digits    = 4
+  )
+
+  cat("\nRelative Frame Emphasis:\n")
+  print(
+    x$ratios[, c("period", "frame", "mean_ratio",
+                 "ci_lower", "ci_upper")],
+    row.names = FALSE,
+    digits    = 4
+  )
 
   invisible(x)
 }
